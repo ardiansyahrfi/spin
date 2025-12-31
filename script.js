@@ -206,7 +206,6 @@ function loadFromStorage() {
     if (showWinnerToggle) showWinnerToggle.checked = true;
   }
 
-  // buat object Image untuk entry bergambar
   entries.forEach((entry) => {
     if (entry.imageDataUrl) {
       const img = new Image();
@@ -321,11 +320,11 @@ function drawWheel() {
   if (entries.length === 0) {
     ctx.save();
     ctx.translate(radius, radius);
-    ctx.fillStyle = "#4b5563";
+    ctx.fillStyle = "#e5e7eb";
     ctx.beginPath();
     ctx.arc(0, 0, radius - 5, 0, 2 * Math.PI);
     ctx.fill();
-    ctx.fillStyle = "#111827";
+    ctx.fillStyle = "#4b5563";
     ctx.font = "bold 18px system-ui, sans-serif";
     ctx.textAlign = "center";
     ctx.fillText("Tambahkan nama", 0, -8);
@@ -340,18 +339,16 @@ function drawWheel() {
     const startAngle = i * sliceAngle;
     const endAngle = startAngle + sliceAngle;
 
-    // warna dasar sektor
     ctx.beginPath();
     ctx.moveTo(radius, radius);
     ctx.arc(radius, radius, radius - 5, startAngle, endAngle);
     ctx.closePath();
     ctx.fillStyle = colors[i % colors.length];
     ctx.fill();
-    ctx.strokeStyle = "#020617";
+    ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // kalau ada gambar -> pakai gambar
     if (entry.image && entry.image.complete) {
       ctx.save();
       ctx.translate(radius, radius);
@@ -376,7 +373,6 @@ function drawWheel() {
       return;
     }
 
-    // teks
     ctx.save();
     ctx.translate(radius, radius);
     const textAngle = startAngle + sliceAngle / 2;
@@ -393,7 +389,7 @@ function drawWheel() {
     const textRadius = radius * 0.6;
 
     ctx.textAlign = "center";
-    ctx.fillStyle = "#f9fafb";
+    ctx.fillStyle = "#ffffff";
     ctx.shadowColor = "rgba(15, 23, 42, 0.9)";
     ctx.shadowBlur = 4;
 
@@ -409,7 +405,6 @@ function drawWheel() {
   });
 }
 
-// hitung pemenang dari sudut akhir (deg)
 function getWinner(angleDeg) {
   if (entries.length === 0) return null;
 
@@ -655,7 +650,6 @@ spinBtn.addEventListener("click", () => {
     wheel.removeEventListener("transitionend", onTransitionEnd);
     currentRotation = targetRotation;
 
-    // berhentiin musik muter
     stopBgAudio();
 
     const winnerData = getWinner(currentRotation);
@@ -684,7 +678,6 @@ spinBtn.addEventListener("click", () => {
     playWinAudio();
     startConfetti(3500);
 
-    // HANYA TAMPILKAN POPUP JIKA TOGGLE ON
     if (showWinnerPopup) {
       openWinnerModal(name, index);
     }
@@ -781,7 +774,6 @@ if (topbarDrawerBackdrop) {
   topbarDrawerBackdrop.addEventListener("click", closeTopbarDrawer);
 }
 
-// tutup drawer ketika salah satu item diklik
 document.querySelectorAll(".drawer-menu .drawer-item").forEach((btn) => {
   btn.addEventListener("click", () => {
     closeTopbarDrawer();
