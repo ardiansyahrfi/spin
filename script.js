@@ -137,6 +137,9 @@ let wheelTitle = "Wheel tanpa judul";
 let wheelDescription = "";
 let showWinnerPopup = true;
 
+// index entry yang akan dipaksa menang di spin berikutnya (private)
+let forcedWinnerIndex = null;
+
 let confettiParticles = [];
 let confettiAnimationId = null;
 
@@ -500,6 +503,7 @@ updateEntriesBtn.addEventListener("click", () => {
   if (lines.length === 0) {
     entries = [];
     drawWheel();
+    forcedWinnerIndex = null;
     showMessage("Wheel kosong. Tambahkan nama dulu ya 🙂");
     updateEntriesCount();
     saveToStorage();
@@ -514,6 +518,7 @@ updateEntriesBtn.addEventListener("click", () => {
   currentRotation = 0;
   wheel.style.transform = "rotate(0deg)";
   drawWheel();
+  forcedWinnerIndex = null;
   showMessage("Wheel sudah diupdate.");
   updateEntriesCount();
   saveToStorage();
@@ -527,6 +532,7 @@ clearEntriesBtn.addEventListener("click", () => {
   currentRotation = 0;
   wheel.style.transform = "rotate(0deg)";
   drawWheel();
+  forcedWinnerIndex = null;
   showMessage("Semua nama sudah dihapus.");
   updateEntriesCount();
   saveToStorage();
@@ -541,6 +547,7 @@ shuffleBtn.addEventListener("click", () => {
   }
   updateTextareaFromEntries();
   drawWheel();
+  forcedWinnerIndex = null;
   saveToStorage();
 });
 
@@ -549,6 +556,7 @@ sortEntriesBtn.addEventListener("click", () => {
   entries.sort((a, b) => a.label.localeCompare(b.label));
   updateTextareaFromEntries();
   drawWheel();
+  forcedWinnerIndex = null;
   saveToStorage();
 });
 
@@ -614,12 +622,61 @@ imageFileInput.addEventListener("change", () => {
       updateTextareaFromEntries();
       drawWheel();
       updateEntriesCount();
+      forcedWinnerIndex = null;
       saveToStorage();
     }
 
     pendingImageMode = null;
   };
   reader.readAsDataURL(file);
+});
+
+// ---------- PRIVATE WINNER SHORTCUTS ----------
+// Ctrl + Shift + P  -> set pemenang rahasia
+// Ctrl + Shift + R  -> reset mode khusus
+document.addEventListener("keydown", (e) => {
+  if (!e.ctrlKey || !e.shiftKey) return;
+
+  const key = e.key.toLowerCase();
+
+  // set winner
+  if (key === "p") {
+    if (!entries.length) {
+      alert("Belum ada nama di wheel 🙂");
+      return;
+    }
+
+    const input = prompt(
+      "Ketik nama persis ATAU nomor urutan (1,2,3,...) yang ingin kamu menangkan:",
+      ""
+    );
+    if (!input) return;
+
+    let idx = -1;
+    const num = parseInt(input, 10);
+    if (!isNaN(num)) {
+      idx = num - 1;
+    } else {
+      idx = entries.findIndex(
+        (e) => e.label.toLowerCase() === input.toLowerCase()
+      );
+    }
+
+    if (idx < 0 || idx >= entries.length) {
+      alert("Nama / nomor tidak ditemukan di entries.");
+      return;
+    }
+
+    forcedWinnerIndex = idx;
+    // Pesan dibuat netral, tidak nyebut nama siapa
+    showMessage("Mode spin khusus aktif.");
+  }
+
+  // reset winner mode
+  if (key === "r") {
+    forcedWinnerIndex = null;
+    showMessage("Mode spin khusus dimatikan.");
+  }
 });
 
 // ---------- SPIN ----------
@@ -638,9 +695,38 @@ spinBtn.addEventListener("click", () => {
   stopWinAudio();
   playBgAudio();
 
-  const randomExtra = Math.random() * 360;
-  const spins = 5 * 360;
-  const targetRotation = currentRotation + spins + randomExtra;
+  let targetRotation;
+  const canForce =
+    forcedWinnerIndex != null &&
+    entries[forcedWinnerIndex] &&
+    entries.length >= 2;
+
+  if (canForce) {
+    const sliceDeg = 360 / entries.length;
+    const min = forcedWinnerIndex * sliceDeg;
+    const max = (forcedWinnerIndex + 1) * sliceDeg;
+    const center = min + sliceDeg / 2;
+
+    let targetNormalized =
+      center + (Math.random() - 0.5) * (sliceDeg * 0.6);
+
+    const margin = sliceDeg * 0.15;
+    if (targetNormalized < min + margin) targetNormalized = min + margin;
+    if (targetNormalized > max - margin) targetNormalized = max - margin;
+
+    const baseAngle =
+      (360 - (targetNormalized % 360) + 360) % 360;
+    const extraTurns = 5 * 360;
+    const currentMod =
+      ((currentRotation % 360) + 360) % 360;
+    const delta = (baseAngle - currentMod + 360) % 360;
+
+    targetRotation = currentRotation + extraTurns + delta;
+  } else {
+    const randomExtra = Math.random() * 360;
+    const spins = 5 * 360;
+    targetRotation = currentRotation + spins + randomExtra;
+  }
 
   wheel.style.transition =
     "transform 4s cubic-bezier(0.25, 0.1, 0.1, 1)";
@@ -680,6 +766,11 @@ spinBtn.addEventListener("click", () => {
 
     if (showWinnerPopup) {
       openWinnerModal(name, index);
+    }
+
+    // setelah 1x spin, matikan mode paksa (biar makin aman)
+    if (canForce) {
+      forcedWinnerIndex = null;
     }
 
     isSpinning = false;
@@ -739,6 +830,7 @@ winnerRemoveBtn.addEventListener("click", () => {
   updateTextareaFromEntries();
   drawWheel();
   updateEntriesCount();
+  forcedWinnerIndex = null;
   saveToStorage();
 
   showMessage(
@@ -792,3 +884,29 @@ document.querySelectorAll(".drawer-menu .drawer-item").forEach((btn) => {
   renderTitle();
   showMessage("Silakan edit daftar nama, lalu klik SPIN.");
 })();
+const brandLogo = document.querySelector(".brand-logo");
+let secretClickCount = 0;
+let secretClickTimer = null;
+
+brandLogo.addEventListener("click", () => {
+  secretClickCount++;
+
+  if (secretClickTimer) clearTimeout(secretClickTimer);
+
+  secretClickTimer = setTimeout(() => {
+    secretClickCount = 0;
+  }, 500);
+
+  if (secretClickCount >= 3) {
+    secretClickCount = 0;
+
+    const name = prompt(
+      "Private Mode\n\nMasukkan nama atau nomor urut pemenang:"
+    );
+
+    if (!name) return;
+
+    setForcedWinnerFromInput(name);
+  }
+});
+
